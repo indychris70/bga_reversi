@@ -34,14 +34,14 @@ $gameinfos = array(
 'publisher_bgg_id' => 1234,
 
 // Board game geek ID of the game
-'bgg_id' => 0,
+'bgg_id' => 2389,
 
 
 // Players configuration that can be played (ex: 2 to 4 players)
-'players' => array( 2,3,4 ),    
+'players' => array( 2 ),
 
 // Suggest players to play with this number of players. Must be null if there is no such advice, or if there is only one possible player configuration.
-'suggest_player_number' => null,
+'suggest_player_number' => 2,
 
 // Discourage players to play with these numbers of players. Must be null if there is no such advice.
 'not_recommend_player_number' => null,

@@ -66,7 +66,7 @@ function (dojo, declare) {
             }
             
             // TODO: Set up your game interface here, according to "gamedatas"
-            
+            dojo.query( '.square' ).connect( 'onclick', this, 'onPlayDisc' );
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -84,24 +84,29 @@ function (dojo, declare) {
         onEnteringState: function( stateName, args )
         {
             console.log( 'Entering state: '+stateName );
-            
+
             switch( stateName )
             {
-            
-            /* Example:
-            
-            case 'myGameState':
-            
-                // Show some HTML block at this game state
-                dojo.style( 'my_html_block_id', 'display', 'block' );
-                
-                break;
-           */
-           
-           
-            case 'dummmy':
-                break;
+                case 'playerTurn':
+                    this.updatePossibleMoves( args.args.possibleMoves );
+                    break;
             }
+        },
+        updatePossibleMoves: function( possibleMoves )
+        {
+            // Remove current possible moves
+            dojo.query( '.possibleMove' ).removeClass( 'possibleMove' );
+
+            for( var x in possibleMoves )
+            {
+                for( var y in possibleMoves[ x ] )
+                {
+                    // x,y is a possible move
+                    dojo.addClass( 'square_'+x+'_'+y, 'possibleMove' );
+                }
+            }
+
+            this.addTooltipToClass( 'possibleMove', '', _('Place a disc here') );
         },
 
         // onLeavingState: this method is called each time we are leaving a game state.
@@ -226,6 +231,32 @@ function (dojo, declare) {
         
         */
 
+        onPlayDisc: function( evt )
+        {
+            // Stop this event propagation
+            dojo.stopEvent( evt );
+
+            // Get the cliqued square x and y
+            // Note: square id format is "square_X_Y"
+            var coords = evt.currentTarget.id.split('_');
+            var x = coords[1];
+            var y = coords[2];
+
+            if( ! dojo.hasClass( 'square_'+x+'_'+y, 'possibleMove' ) )
+            {
+                // This is not a possible move => the click does nothing
+                return ;
+            }
+
+            if( this.checkAction( 'playDisc' ) )    // Check that this action is possible at this moment
+            {
+                this.ajaxcall( "/tutorialonescargo/tutorialonescargo/playDisc.html", {
+                    x:x,
+                    y:y
+                }, this, function( result ) {} );
+            }
+        },
+
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
@@ -244,6 +275,13 @@ function (dojo, declare) {
             console.log( 'notifications subscriptions setup' );
             
             // TODO: here, associate your game notifications with local methods
+
+            dojo.subscribe( 'playDisc', this, "notif_playDisc" );
+            this.notifqueue.setSynchronous( 'playDisc', 500 );
+            dojo.subscribe( 'turnOverDiscs', this, "notif_turnOverDiscs" );
+            this.notifqueue.setSynchronous( 'turnOverDiscs', 1500 );
+            dojo.subscribe( 'newScores', this, "notif_newScores" );
+            this.notifqueue.setSynchronous( 'newScores', 500 );
             
             // Example 1: standard notification handling
             // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
@@ -272,5 +310,56 @@ function (dojo, declare) {
         },    
         
         */
+
+        notif_playDisc: function( notif )
+        {
+            // Remove current possible moves (makes the board more clear)
+            dojo.query( '.possibleMove' ).removeClass( 'possibleMove' );
+
+            this.addTokenOnBoard( notif.args.x, notif.args.y, notif.args.player_id );
+        },
+
+        notif_turnOverDiscs: function( notif )
+        {
+            // Get the color of the player who is returning the discs
+            var targetColor = this.gamedatas.players[ notif.args.player_id ].color;
+
+            // Make these discs blink and set them to the specified color
+            for( var i in notif.args.turnedOver )
+            {
+                var token = notif.args.turnedOver[ i ];
+
+                // Make the token blink 2 times
+                var anim = dojo.fx.chain( [
+                    dojo.fadeOut( { node: 'token_'+token.x+'_'+token.y } ),
+                    dojo.fadeIn( { node: 'token_'+token.x+'_'+token.y } ),
+                    dojo.fadeOut( {
+                        node: 'token_'+token.x+'_'+token.y,
+                        onEnd: function( node ) {
+
+                            // Remove any color class
+                            dojo.removeClass( node, [ 'tokencolor_000000', 'tokencolor_ffffff' ] );
+                            // ... and add the good one
+                            dojo.addClass( node, 'tokencolor_'+targetColor );
+
+                        }
+                    } ),
+                    dojo.fadeIn( { node: 'token_'+token.x+'_'+token.y  } )
+
+                ] ); // end of dojo.fx.chain
+
+                // ... and launch the animation
+                anim.play();
+            }
+        },
+
+        notif_newScores: function( notif )
+        {
+            for( var player_id in notif.args.scores )
+            {
+                var newScore = notif.args.scores[ player_id ];
+                this.scoreCtrl[ player_id ].toValue( newScore );
+            }
+        },
    });             
 });
