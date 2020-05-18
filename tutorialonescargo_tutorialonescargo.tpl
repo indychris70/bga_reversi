@@ -26,10 +26,21 @@
 -->
 
 
-Hey, this is my first game!
+<div id="board">
+    <!-- BEGIN square -->
+    <div id="square_{X}_{Y}" class="square" style="left: {LEFT}px; top: {TOP}px;"></div>
+    <!-- END square -->
+
+    <div id="tokens">
+    </div>
+</div>
 
 
 <script type="text/javascript">
+
+    // Templates
+
+    var jstpl_token='<div class="token tokencolor_${color}" id="token_${x_y}"></div>';
 
 // Javascript HTML templates
 

@@ -61,8 +61,8 @@ class TutorialOneScargo extends Table
         // The default below is red/green/blue/orange/brown
         // The number of colors defined here must correspond to the maximum number of players allowed for the gams
         $gameinfos = self::getGameinfos();
-        $default_colors = $gameinfos['player_colors'];
- 
+//        $default_colors = $gameinfos['player_colors'];
+        $default_colors = array( "ffffff", "000000" );
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
         $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar) VALUES ";
@@ -74,9 +74,34 @@ class TutorialOneScargo extends Table
         }
         $sql .= implode( $values, ',' );
         self::DbQuery( $sql );
-        self::reattributeColorsBasedOnPreferences( $players, $gameinfos['player_colors'] );
+        // setting color elsewhere per tutorial
+//        self::reattributeColorsBasedOnPreferences( $players, $gameinfos['player_colors'] );
         self::reloadPlayersBasicInfos();
-        
+
+        // Init the board
+        $sql = "INSERT INTO board (board_x,board_y,board_player) VALUES ";
+        $sql_values = array();
+        list( $blackplayer_id, $whiteplayer_id ) = array_keys( $players );
+        for( $x=1; $x<=8; $x++ )
+        {
+            for( $y=1; $y<=8; $y++ )
+            {
+                $token_value = "NULL";
+                if( ($x==4 && $y==4) || ($x==5 && $y==5) )  // Initial positions of white player
+                    $token_value = "'$whiteplayer_id'";
+                else if( ($x==4 && $y==5) || ($x==5 && $y==4) )  // Initial positions of black player
+                    $token_value = "'$blackplayer_id'";
+
+                $sql_values[] = "('$x','$y',$token_value)";
+            }
+        }
+        $sql .= implode( $sql_values, ',' );
+        self::DbQuery( $sql );
+
+
+        // Active first player
+        self::activeNextPlayer();
+
         /************ Start the game initialization *****/
 
         // Init global values with their initial values
@@ -115,6 +140,11 @@ class TutorialOneScargo extends Table
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
         $sql = "SELECT player_id id, player_score score FROM player ";
         $result['players'] = self::getCollectionFromDb( $sql );
+
+        // Get reversi board token
+        $result['board'] = self::getObjectListFromDB( "SELECT board_x x, board_y y, board_player player
+                                                       FROM board
+                                                       WHERE board_player IS NOT NULL" );
   
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
   
